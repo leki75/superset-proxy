@@ -1,0 +1,44 @@
+{{- $path     := env "INGRESS_PATH" "/" }}
+{{- $superset := printf "http://%s:%s/"   (env "SUPERSET_HOST" "superset.default") (env "SUPERSET_PORT" "9000") }}
+{{- $ingress  := printf "%s://$host:%s%s" (env "INGRESS_SCHEME" "http") (env "INGRESS_PORT" "80") $path }}
+
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    default_type  application/octet-stream;
+
+    sendfile  on;
+    keepalive_timeout  65;
+
+    server {
+        listen  80;
+
+        server_name  localhost;
+        sub_filter_once  off;
+
+        proxy_redirect  "{{ $superset }}" "{{ $ingress }}";
+        proxy_set_header  Accept-Encoding "";
+
+        location {{ $path }} {
+            proxy_pass  "{{ $superset }}";
+
+            sub_filter  \"/  \"{{ $path }};
+        }
+
+        location {{ $path }}static/assets/ {
+            proxy_pass  "{{ $superset }}static/assets/";
+
+            sub_filter_types  application/javascript;
+            sub_filter  \"/databaseasync/   \"{{ $path }}databaseasync/;
+            sub_filter  \"/dashboardasync/  \"{{ $path }}dashboardasync/;
+            sub_filter  \"/users/           \"{{ $path }}users/;
+            sub_filter  \"/static/          \"{{ $path }}static/;
+            sub_filter  \"/superset/        \"{{ $path }}superset/;
+            sub_filter  \"superset/         \"{{ $path | substring 1 -1 }}superset/;
+        }
+    }
+}
