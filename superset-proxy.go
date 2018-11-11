@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/exec"
 	"syscall"
 	"text/template"
 )
@@ -47,8 +48,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	env := os.Environ()
-	err = syscall.Exec(os.Args[1], os.Args[1:], env)
+	binary, err := exec.LookPath(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = syscall.Exec(binary, os.Args[1:], os.Environ())
 	if err != nil {
 		log.Fatal(err)
 	}
